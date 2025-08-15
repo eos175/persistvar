@@ -16,7 +16,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mgr.AutoSync(ctx, 5*time.Second)
+	mgr.AutoSync(ctx, 3*time.Minute)
 
 	counter, _ := persistvar.NewVar(mgr, "counter", 0)
 	name, _ := persistvar.NewVar(mgr, "username", "anon")

@@ -52,6 +52,12 @@ func (b *BoltStorage) Load(key string) ([]byte, error) {
 	return val, err
 }
 
+func (b *BoltStorage) Delete(key string) error {
+	return b.db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(defaultBucket).Delete([]byte(key))
+	})
+}
+
 func (s *BoltStorage) Close() error {
 	return s.db.Close()
 }

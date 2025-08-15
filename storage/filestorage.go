@@ -18,12 +18,27 @@ func NewFileStorage(dir string) (*FileStorage, error) {
 
 func (fs *FileStorage) Save(key string, value []byte) error {
 	path := filepath.Join(fs.dir, key+".var")
-	return os.WriteFile(path, value, 0644)
+	tmpPath := path + ".tmp"
+
+	// Escribir primero a un archivo temporal
+	if err := os.WriteFile(tmpPath, value, 0644); err != nil {
+		return err
+	}
+
+	// Reemplazo atómico
+	return os.Rename(tmpPath, path)
 }
 
 func (fs *FileStorage) Load(key string) ([]byte, error) {
 	path := filepath.Join(fs.dir, key+".var")
 	return os.ReadFile(path)
+}
+
+func (fs *FileStorage) Delete(key string) error {
+	path := filepath.Join(fs.dir, key+".var")
+	// os.Remove devuelve un error si el archivo no existe,
+	// lo cual está bien para nosotros.
+	return os.Remove(path)
 }
 
 func (fs *FileStorage) Close() error {

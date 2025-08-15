@@ -1,16 +1,19 @@
 package persistvar
 
 import (
-	"encoding/json"
+	"bytes"
 	"sync"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type Var[T any] struct {
-	key     string
-	value   T
-	storage Storage
-	mu      sync.RWMutex
-	dirty   bool
+	key        string
+	value      T
+	storage    Storage
+	mu         sync.RWMutex
+	dirty      bool
+	lastSynced []byte // Snapshot del último estado guardado
 }
 
 func NewVar[T any](m *VarManager, key string, defaultValue T) (*Var[T], error) {
@@ -18,9 +21,10 @@ func NewVar[T any](m *VarManager, key string, defaultValue T) (*Var[T], error) {
 
 	data, err := m.storage.Load(key)
 	if err == nil {
-		if unmarshalErr := json.Unmarshal(data, &v.value); unmarshalErr != nil {
+		if unmarshalErr := msgpack.Unmarshal(data, &v.value); unmarshalErr != nil {
 			return nil, unmarshalErr
 		}
+		v.lastSynced = data // Guardamos el snapshot
 	} else {
 		v.Set(defaultValue)
 	}
@@ -63,10 +67,23 @@ func (v *Var[T]) Sync() error {
 }
 
 func (v *Var[T]) syncNow() error {
-	data, err := json.Marshal(v.value)
+	data, err := msgpack.Marshal(v.value)
 	if err != nil {
 		return err
 	}
+
+	// Optimización: Evita escribir en el almacenamiento si el valor no ha cambiado.
+	if v.lastSynced != nil && bytes.Equal(v.lastSynced, data) {
+		v.dirty = false
+		return nil
+	}
+
+	if err := v.storage.Save(v.key, data); err != nil {
+		return err
+	}
+
+	v.lastSynced = data
 	v.dirty = false
-	return v.storage.Save(v.key, data)
+
+	return nil
 }
