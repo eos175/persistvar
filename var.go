@@ -1,7 +1,6 @@
 package persistvar
 
 import (
-	"bytes"
 	"sync"
 
 	"github.com/vmihailenco/msgpack/v5"
@@ -72,13 +71,7 @@ func (v *Var[T]) syncNow() error {
 		return err
 	}
 
-	// Optimización: Evita escribir en el almacenamiento si el valor no ha cambiado.
-	if v.lastSynced != nil && bytes.Equal(v.lastSynced, data) {
-		v.dirty = false
-		return nil
-	}
-
-	if err := v.storage.Save(v.key, data); err != nil {
+	if err := v.storage.Save(v.key, data, v.lastSynced); err != nil {
 		return err
 	}
 

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 )
@@ -16,12 +17,17 @@ func NewFileStorage(dir string) (*FileStorage, error) {
 	return &FileStorage{dir: dir}, nil
 }
 
-func (fs *FileStorage) Save(key string, value []byte) error {
+func (fs *FileStorage) Save(key string, newValue []byte, oldValue []byte) error {
+	// Optimización: si el valor no ha cambiado, no hacemos nada.
+	if oldValue != nil && bytes.Equal(newValue, oldValue) {
+		return nil
+	}
+
 	path := filepath.Join(fs.dir, key+".var")
 	tmpPath := path + ".tmp"
 
 	// Escribir primero a un archivo temporal
-	if err := os.WriteFile(tmpPath, value, 0644); err != nil {
+	if err := os.WriteFile(tmpPath, newValue, 0644); err != nil {
 		return err
 	}
 

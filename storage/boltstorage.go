@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"errors"
 	"slices"
 
@@ -33,9 +34,13 @@ func NewBoltStorage(path string) (*BoltStorage, error) {
 	}, nil
 }
 
-func (b *BoltStorage) Save(key string, value []byte) error {
+func (b *BoltStorage) Save(key string, newValue []byte, oldValue []byte) error {
+	// Optimización: si el valor no ha cambiado, no hacemos nada.
+	if oldValue != nil && bytes.Equal(newValue, oldValue) {
+		return nil
+	}
 	return b.db.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(defaultBucket).Put([]byte(key), value)
+		return tx.Bucket(defaultBucket).Put([]byte(key), newValue)
 	})
 }
 
