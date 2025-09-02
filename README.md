@@ -1,33 +1,33 @@
 # PersistVar
 
-Librería Go para **variables persistentes tipadas** con soporte genérico (`Var[T]`) y múltiples backends de almacenamiento.
+Go library for **typed persistent variables** with generic support (`Var[T]`) and multiple storage backends.
 
-Actualmente soporta:
+Currently supports:
 
-* **FileStorage**: almacenamiento ligero, un archivo por variable.
-* **BoltStorage**: almacenamiento embebido rápido, seguro para concurrencia y muchas variables.
+*   **FileStorage**: lightweight storage, one file per variable.
+*   **BoltStorage**: fast embedded storage, safe for concurrency and many variables.
 
 ---
 
-## 📂 Estructura del proyecto
+## 📂 Project Structure
 
 ```
 persistvar/
 │
-├── storage/                 
-│   ├── filestorage.go       # Persistencia en archivos
-│   └── boltstorage.go       # Persistencia con BoltDB
+├── storage/
+│   ├── filestorage.go       # File-based persistence
+│   └── boltstorage.go       # BoltDB-based persistence
 │
-├── var.go                   # Implementación genérica de Var[T]
-├── manager.go               # VarManager con AutoSync y Close()
-├── storage.go               # Interface Storage { Save, Load, Close }
+├── var.go                   # Generic implementation of Var[T]
+├── manager.go               # VarManager with AutoSync and Close()
+├── storage.go               # Storage interface { Save, Load, Close }
 ├── go.mod
 └── README.md
 ```
 
 ---
 
-## 📜 Ejemplo de uso
+## 📜 Usage Example
 
 ```go
 package main
@@ -47,57 +47,56 @@ func main() {
     // boltStorage, _ := storage.NewBoltStorage("vars.db")
 
     mgr := persistvar.NewVarManager(fs)
-    defer mgr.Close() // Guarda cambios pendientes y cierra el manager al salir
+    defer mgr.Close() // Saves pending changes and closes the manager on exit
 
-    // Iniciar autosync cada 33 segundos
+    // Start autosync every 33 seconds
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
     mgr.AutoSync(ctx, 33*time.Second)
 
-    // Crear variables persistentes
+    // Create persistent variables
     counter, _ := persistvar.NewVar(mgr, "counter", 0)
     username, _ := persistvar.NewVar(mgr, "username", "anon")
 
-    // Modificar variables
+    // Modify variables
     counter.SetLazy(counter.Get() + 1)
     username.SetLazy("Emmanuel")
 
     fmt.Println("Counter:", counter.Get())
     fmt.Println("Username:", username.Get())
 
-    // Esperar para simular trabajo
+    // Wait to simulate work
     time.Sleep(10 * time.Second)
 }
 ```
 
 ---
 
-## ✅ Ventajas
+## ✅ Advantages
 
-* **Genéricos en Go** → `Var[T]` seguro en tiempo de compilación.
-* **SetLazy()** y **Sync() global** → control total sobre cuándo se persisten los cambios.
-* **AutoSync** → guarda automáticamente cambios lazy en background.
-* **FileStorage** → ultra ligero para pocas variables.
-* **BoltStorage** → rápido, concurrente y confiable para muchas variables.
-* **Minimalista y sin dependencias innecesarias** (solo bbolt).
+*   **Go Generics** → `Var[T]` is compile-time safe.
+*   **SetLazy()** and **global Sync()** → full control over when changes are persisted.
+*   **AutoSync** → automatically saves lazy changes in the background.
+*   **FileStorage** → ultra-lightweight for a few variables.
+*   **BoltStorage** → fast, concurrent, and reliable for many variables.
+*   **Minimalist and without unnecessary dependencies** (only bbolt).
 
 ---
 
-## ⚡ Recomendaciones de uso
+## ⚡ Usage Recommendations
 
-1. Usa **FileStorage** para pocas variables simples.
-2. Usa **BoltStorage** para muchas variables o cuando necesites concurrencia segura.
-3. Siempre combina `AutoSync` con `defer mgr.Close()` para garantizar que todos los cambios pendientes se guarden al salir.
+1.  Use **FileStorage** for a few simple variables.
+2.  Use **BoltStorage** for many variables or when you need safe concurrency.
+3.  Always combine `AutoSync` with `defer mgr.Close()` to ensure all pending changes are saved on exit.
 
 ```go
 ctx, cancel := context.WithCancel(context.Background())
 mgr.AutoSync(ctx, 5*time.Second)
-defer mgr.Close()   // commit final + cierre de recursos
-defer cancel()     // detener autosync
+defer mgr.Close()   // final commit + resource cleanup
+defer cancel()     // stop autosync
 ```
 
-
-## 🔹 Diagrama conceptual
+## 🔹 Conceptual Diagram
 
 ```mermaid
 classDiagram
