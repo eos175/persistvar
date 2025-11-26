@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+// VarManager manages a collection of persistent variables, providing lifecycle
+// and synchronization mechanisms.
 type VarManager struct {
 	storage    Storage
 	vars       []syncable
@@ -18,6 +20,7 @@ type syncable interface {
 	Sync() error
 }
 
+// NewVarManager creates a new manager for persistent variables, using the provided storage backend.
 func NewVarManager(storage Storage) *VarManager {
 	return &VarManager{
 		storage:  storage,
@@ -25,9 +28,8 @@ func NewVarManager(storage Storage) *VarManager {
 	}
 }
 
-// loadOrStore devuelve la variable existente si ya está registrada,
-// o crea una nueva usando la función factory, la registra y la devuelve.
-// Todo se ejecuta atómicamente bajo el lock del manager.
+// loadOrStore returns the existing variable if already registered,
+// or creates a new one using the factory function, registers it, and returns it.
 func (m *VarManager) loadOrStore(key string, factory func() (syncable, error)) (syncable, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -46,6 +48,7 @@ func (m *VarManager) loadOrStore(key string, factory func() (syncable, error)) (
 	return v, nil
 }
 
+// Sync forces all managed variables to write their pending changes to storage immediately.
 func (m *VarManager) Sync() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -57,10 +60,11 @@ func (m *VarManager) Sync() error {
 	return nil
 }
 
-// AutoSync inicia un goroutine que guarda todas las variables lazy periódicamente
+// AutoSync starts a goroutine that periodically saves all lazy variables to storage.
+// It returns immediately if AutoSync is already running.
 func (m *VarManager) AutoSync(ctx context.Context, interval time.Duration) {
 	if m.autosyncCh != nil {
-		return // ya hay un autosync en ejecución
+		return // autosync is already running
 	}
 
 	m.autosyncCh = make(chan struct{})
@@ -80,7 +84,7 @@ func (m *VarManager) AutoSync(ctx context.Context, interval time.Duration) {
 	}()
 }
 
-// StopAutoSync permite detener el autosync manualmente
+// StopAutoSync halts the automatic synchronization process.
 func (m *VarManager) StopAutoSync() {
 	if m.autosyncCh != nil {
 		close(m.autosyncCh)
@@ -88,6 +92,8 @@ func (m *VarManager) StopAutoSync() {
 	}
 }
 
+// Close gracefully shuts down the manager, ensuring all pending changes are written to storage
+// and stopping any active AutoSync routine.
 func (m *VarManager) Close() error {
 	if err := m.Sync(); err != nil {
 		return err

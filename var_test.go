@@ -53,3 +53,66 @@ func TestNewVar_Singleton(t *testing.T) {
 		t.Error("FAILED: Expected error when creating existing var with different type, got nil")
 	}
 }
+
+func TestVar_Update(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "persistvar_test_update")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	st, err := storage.NewFileStorage(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mgr := persistvar.NewVarManager(st)
+	defer mgr.Close()
+
+	v, err := persistvar.NewVar(mgr, "sequence", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Test UpdateLazy (Incremento)
+	newVal := v.UpdateLazy(func(curr int) (int, bool) {
+		return curr + 1, true
+	})
+	if newVal != 1 {
+		t.Errorf("UpdateLazy failed: expected 1, got %d", newVal)
+	}
+	if v.Get() != 1 {
+		t.Errorf("Get after UpdateLazy failed: expected 1, got %d", v.Get())
+	}
+
+	// 2. Test Update (No change optimization)
+	// Intentamos actualizar al mismo valor, retornando false
+	valAfterNoChange, err := v.Update(func(curr int) (int, bool) {
+		return curr, false
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if valAfterNoChange != 1 {
+		t.Errorf("Update with no change failed: expected 1, got %d", valAfterNoChange)
+	}
+
+	// 3. Test Update (Persistencia inmediata)
+	valPersisted, err := v.Update(func(curr int) (int, bool) {
+		return curr + 10, true
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if valPersisted != 11 {
+		t.Errorf("Update persisted failed: expected 11, got %d", valPersisted)
+	}
+
+	// Verificar en una nueva instancia que se persistió
+	v2, err := persistvar.NewVar(mgr, "sequence", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v2.Get() != 11 {
+		t.Errorf("Persistence check failed: expected 11, got %d", v2.Get())
+	}
+}
