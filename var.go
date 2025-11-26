@@ -33,7 +33,8 @@ func NewVar[T any](m *VarManager, key string, defaultValue T) (*Var[T], error) {
 		return v, nil
 	}
 
-	obj, err := m.LoadOrStore(key, factory)
+	// Delegamos todo al manager
+	obj, err := m.loadOrStore(key, factory)
 	if err != nil {
 		return nil, err
 	}

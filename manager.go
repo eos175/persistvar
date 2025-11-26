@@ -25,10 +25,10 @@ func NewVarManager(storage Storage) *VarManager {
 	}
 }
 
-// LoadOrStore devuelve la variable existente si ya está registrada,
+// loadOrStore devuelve la variable existente si ya está registrada,
 // o crea una nueva usando la función factory, la registra y la devuelve.
 // Todo se ejecuta atómicamente bajo el lock del manager.
-func (m *VarManager) LoadOrStore(key string, factory func() (syncable, error)) (syncable, error) {
+func (m *VarManager) loadOrStore(key string, factory func() (syncable, error)) (syncable, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
