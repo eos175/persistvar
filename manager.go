@@ -9,6 +9,7 @@ import (
 type VarManager struct {
 	storage    Storage
 	vars       []syncable
+	registry   map[string]syncable
 	mu         sync.Mutex
 	autosyncCh chan struct{}
 }
@@ -18,13 +19,31 @@ type syncable interface {
 }
 
 func NewVarManager(storage Storage) *VarManager {
-	return &VarManager{storage: storage}
+	return &VarManager{
+		storage:  storage,
+		registry: make(map[string]syncable),
+	}
 }
 
-func (m *VarManager) register(v syncable) {
+// LoadOrStore devuelve la variable existente si ya está registrada,
+// o crea una nueva usando la función factory, la registra y la devuelve.
+// Todo se ejecuta atómicamente bajo el lock del manager.
+func (m *VarManager) LoadOrStore(key string, factory func() (syncable, error)) (syncable, error) {
 	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if existing, ok := m.registry[key]; ok {
+		return existing, nil
+	}
+
+	v, err := factory()
+	if err != nil {
+		return nil, err
+	}
+
 	m.vars = append(m.vars, v)
-	m.mu.Unlock()
+	m.registry[key] = v
+	return v, nil
 }
 
 func (m *VarManager) Sync() error {

@@ -1,6 +1,7 @@
 package persistvar
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/vmihailenco/msgpack/v5"
@@ -16,20 +17,32 @@ type Var[T any] struct {
 }
 
 func NewVar[T any](m *VarManager, key string, defaultValue T) (*Var[T], error) {
-	v := &Var[T]{key: key, storage: m.storage}
+	factory := func() (syncable, error) {
+		v := &Var[T]{key: key, storage: m.storage}
 
-	data, err := m.storage.Load(key)
-	if err == nil {
-		if unmarshalErr := msgpack.Unmarshal(data, &v.value); unmarshalErr != nil {
-			return nil, unmarshalErr
+		data, err := m.storage.Load(key)
+		if err == nil {
+			if unmarshalErr := msgpack.Unmarshal(data, &v.value); unmarshalErr != nil {
+				return nil, unmarshalErr
+			}
+			v.lastSynced = data
+		} else {
+			// No existe en disco, inicializar con default y marcar para guardar luego.
+			v.SetLazy(defaultValue)
 		}
-		v.lastSynced = data // Guardamos el snapshot
-	} else {
-		v.Set(defaultValue)
+		return v, nil
 	}
 
-	m.register(v)
-	return v, nil
+	obj, err := m.LoadOrStore(key, factory)
+	if err != nil {
+		return nil, err
+	}
+
+	if typed, ok := obj.(*Var[T]); ok {
+		return typed, nil
+	}
+
+	return nil, fmt.Errorf("var '%s' already exists with a different type", key)
 }
 
 func (v *Var[T]) Key() string {
