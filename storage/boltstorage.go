@@ -2,9 +2,9 @@ package storage
 
 import (
 	"bytes"
-	"errors"
 	"slices"
 
+	"github.com/eos175/persistvar"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -49,7 +49,7 @@ func (b *BoltStorage) Load(key string) ([]byte, error) {
 	err := b.db.View(func(tx *bolt.Tx) error {
 		v := tx.Bucket(defaultBucket).Get([]byte(key))
 		if v == nil {
-			return errors.New("key not found")
+			return persistvar.ErrNotFound
 		}
 		val = slices.Clone(v) // copiar bytes
 		return nil

@@ -1,5 +1,9 @@
 package persistvar
 
+import "errors"
+
+var ErrNotFound = errors.New("persistvar: key not found")
+
 // Storage defines the interface for persistent storage backends.
 // Implementations must ensure thread-safety where applicable for their storage mechanisms.
 type Storage interface {

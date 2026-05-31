@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+
+	"github.com/eos175/persistvar"
 )
 
 type FileStorage struct {
@@ -37,7 +39,14 @@ func (fs *FileStorage) Save(key string, newValue []byte, oldValue []byte) error 
 
 func (fs *FileStorage) Load(key string) ([]byte, error) {
 	path := filepath.Join(fs.dir, key+".var")
-	return os.ReadFile(path)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, persistvar.ErrNotFound
+		}
+		return nil, err
+	}
+	return data, nil
 }
 
 func (fs *FileStorage) Delete(key string) error {

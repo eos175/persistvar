@@ -1,6 +1,7 @@
 package persistvar
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -32,9 +33,11 @@ func NewVar[T any](m *VarManager, key string, defaultValue T) (*Var[T], error) {
 				return nil, unmarshalErr
 			}
 			v.lastSynced = data
-		} else {
+		} else if errors.Is(err, ErrNotFound) {
 			// Not found in disk, initialize with default and mark for saving later.
 			v.SetLazy(defaultValue)
+		} else {
+			return nil, err
 		}
 		return v, nil
 	}

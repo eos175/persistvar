@@ -51,8 +51,10 @@ func (m *VarManager) loadOrStore(key string, factory func() (syncable, error)) (
 // Sync forces all managed variables to write their pending changes to storage immediately.
 func (m *VarManager) Sync() error {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	for _, v := range m.vars {
+	vars := append([]syncable(nil), m.vars...)
+	m.mu.Unlock()
+
+	for _, v := range vars {
 		if err := v.Sync(); err != nil {
 			return err
 		}
