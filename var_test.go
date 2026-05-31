@@ -116,3 +116,27 @@ func TestVar_Update(t *testing.T) {
 		t.Errorf("Persistence check failed: expected 11, got %d", v2.Get())
 	}
 }
+
+func TestNewVar_KeyValidation(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "persistvar_test_key_validation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	st, err := storage.NewFileStorage(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mgr := persistvar.NewVarManager(st)
+	defer mgr.Close()
+
+	if _, err := persistvar.NewVar(mgr, "valid_key-1.2", 1); err != nil {
+		t.Fatalf("expected valid key to pass, got error: %v", err)
+	}
+
+	if _, err := persistvar.NewVar(mgr, "invalid/key?name", 1); err == nil {
+		t.Fatal("expected invalid key to fail, got nil error")
+	}
+}

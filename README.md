@@ -4,8 +4,8 @@ Go library for **typed persistent variables** with generic support (`Var[T]`) an
 
 Currently supports:
 
-*   **FileStorage**: lightweight storage, one file per variable.
-*   **BoltStorage**: fast embedded storage, safe for concurrency and many variables.
+- **FileStorage**: lightweight storage, one file per variable.
+- **BoltStorage**: fast embedded storage, safe for concurrency and many variables.
 
 ---
 
@@ -58,8 +58,10 @@ func main() {
     counter, _ := persistvar.NewVar(mgr, "counter", 0)
     username, _ := persistvar.NewVar(mgr, "username", "anon")
 
-    // Modify variables
-    counter.SetLazy(counter.Get() + 1)
+    // Modify variables atomically
+    counter.UpdateLazy(func(curr int) (int, bool) {
+        return curr + 1, true
+    })
     username.SetLazy("Emmanuel")
 
     fmt.Println("Counter:", counter.Get())
@@ -74,12 +76,13 @@ func main() {
 
 ## ✅ Advantages
 
-*   **Go Generics** → `Var[T]` is compile-time safe.
-*   **SetLazy()** and **global Sync()** → full control over when changes are persisted.
-*   **AutoSync** → automatically saves lazy changes in the background.
-*   **FileStorage** → ultra-lightweight for a few variables.
-*   **BoltStorage** → fast, concurrent, and reliable for many variables.
-*   **Minimalist and without unnecessary dependencies** (only bbolt).
+- **Go Generics** → `Var[T]` is compile-time safe.
+- **SetLazy()**, **UpdateLazy()** and **global Sync()** → full control over when changes are persisted.
+- **Update() / UpdateLazy()** → atomic read-modify-write per variable.
+- **AutoSync** → automatically saves lazy changes in the background.
+- **FileStorage** → ultra-lightweight for a few variables.
+- **BoltStorage** → fast, concurrent, and reliable for many variables.
+- **Minimalist and without unnecessary dependencies** (only bbolt).
 
 ---
 
@@ -88,6 +91,7 @@ func main() {
 1.  Use **FileStorage** for a few simple variables.
 2.  Use **BoltStorage** for many variables or when you need safe concurrency.
 3.  Always combine `AutoSync` with `defer mgr.Close()` to ensure all pending changes are saved on exit.
+4.  Use `Update()` / `UpdateLazy()` for safe atomic increments and transforms.
 
 ```go
 ctx, cancel := context.WithCancel(context.Background())
@@ -95,6 +99,34 @@ mgr.AutoSync(ctx, 5*time.Second)
 defer mgr.Close()   // final commit + resource cleanup
 defer cancel()     // stop autosync
 ```
+
+## API Notes
+
+### Atomic updates
+
+- `UpdateLazy(transform func(T) (T, bool)) T`
+  - Runs `transform` under the variable lock.
+  - If `changed=false`, value is not modified.
+  - If `changed=true`, value is updated in memory and marked dirty.
+
+- `Update(transform func(T) (T, bool)) (T, error)`
+  - Same atomic transform behavior as `UpdateLazy`.
+  - Persists immediately when `changed=true`.
+
+### Variable key format
+
+- Keys must match: `[a-zA-Z0-9._-]+`
+- Invalid keys return an error in `NewVar`.
+
+### Storage interface
+
+`Storage` uses a save signature with previous value support:
+
+```go
+Save(key string, newValue []byte, oldValue []byte) error
+```
+
+`oldValue` allows storage implementations to optimize writes and support CAS-like behavior.
 
 ## 🔹 Conceptual Diagram
 
@@ -120,8 +152,9 @@ classDiagram
 
     class Storage {
         <<interface>>
-        +Save(key string, value []bytes) error
+        +Save(key string, newValue []bytes, oldValue []bytes) error
         +Load(key: string) []bytes, error
+        +Delete(key: string) error
         +Close() error
     }
 

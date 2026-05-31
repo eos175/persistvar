@@ -3,10 +3,13 @@ package persistvar
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"sync"
 
 	"github.com/vmihailenco/msgpack/v5"
 )
+
+var validKeyPattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
 
 // Var is a generic variable that persists its value to storage.
 type Var[T any] struct {
@@ -24,6 +27,10 @@ type Var[T any] struct {
 //
 // Important: For the same key, NewVar always returns the identical *Var[T] instance.
 func NewVar[T any](m *VarManager, key string, defaultValue T) (*Var[T], error) {
+	if !validKeyPattern.MatchString(key) {
+		return nil, fmt.Errorf("invalid key %q: allowed characters are [a-zA-Z0-9._-]", key)
+	}
+
 	factory := func() (syncable, error) {
 		v := &Var[T]{key: key, storage: m.storage}
 
