@@ -13,6 +13,7 @@ type Storage interface {
 	// Save writes a new value for a given key.
 	// It includes the oldValue for potential optimistic locking or Compare-And-Swap (CAS) like operations,
 	// allowing implementations to prevent overwrites if the value has changed since it was last read.
+	// Implementations may use oldValue to optimize writes by comparing it with newValue; if they are equal, the operation can be skipped.
 	Save(key string, newValue []byte, oldValue []byte) error
 	// Load retrieves the value associated with a key.
 	// Returns an error if the key does not exist.

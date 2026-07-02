@@ -107,9 +107,9 @@ func (m *VarManager) StopAutoSync() {
 // Close gracefully shuts down the manager, ensuring all pending changes are written to storage
 // and stopping any active AutoSync routine.
 func (m *VarManager) Close() error {
+	m.StopAutoSync()
 	if err := m.Sync(); err != nil {
 		return err
 	}
-	m.StopAutoSync()
 	return m.storage.Close()
 }
