@@ -11,6 +11,7 @@ import (
 // and synchronization mechanisms.
 type VarManager struct {
 	storage    Storage
+	serializer Serializer
 	vars       []syncable
 	registry   map[string]syncable
 	mu         sync.Mutex
@@ -22,10 +23,15 @@ type syncable interface {
 }
 
 // NewVarManager creates a new manager for persistent variables, using the provided storage backend.
-func NewVarManager(storage Storage) *VarManager {
+// If serializer is nil, JSONSerializer is used by default.
+func NewVarManager(storage Storage, serializer Serializer) *VarManager {
+	if serializer == nil {
+		serializer = &JSONSerializer{}
+	}
 	return &VarManager{
-		storage:  storage,
-		registry: make(map[string]syncable),
+		storage:    storage,
+		serializer: serializer,
+		registry:   make(map[string]syncable),
 	}
 }
 

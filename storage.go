@@ -1,6 +1,9 @@
 package persistvar
 
-import "errors"
+import (
+	"encoding/json"
+	"errors"
+)
 
 var ErrNotFound = errors.New("persistvar: key not found")
 
@@ -18,4 +21,21 @@ type Storage interface {
 	Delete(key string) error
 	// Close releases any resources held by the storage backend.
 	Close() error
+}
+
+// Serializer defines the interface for variable serialization.
+type Serializer interface {
+	Marshal(v any) ([]byte, error)
+	Unmarshal(data []byte, v any) error
+}
+
+// JSONSerializer is a default implementation using encoding/json.
+type JSONSerializer struct{}
+
+func (s *JSONSerializer) Marshal(v any) ([]byte, error) {
+	return json.Marshal(v)
+}
+
+func (s *JSONSerializer) Unmarshal(data []byte, v any) error {
+	return json.Unmarshal(data, v)
 }

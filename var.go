@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
-
-	"github.com/vmihailenco/msgpack/v5"
 )
 
 var validKeyPattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
@@ -16,6 +14,7 @@ type Var[T any] struct {
 	key        string
 	value      T
 	storage    Storage
+	serializer Serializer
 	mu         sync.RWMutex
 	dirty      bool
 	lastSynced []byte // Snapshot of the last saved state
@@ -32,11 +31,11 @@ func NewVar[T any](m *VarManager, key string, defaultValue T) (*Var[T], error) {
 	}
 
 	factory := func() (syncable, error) {
-		v := &Var[T]{key: key, storage: m.storage}
+		v := &Var[T]{key: key, storage: m.storage, serializer: m.serializer}
 
 		data, err := m.storage.Load(key)
 		if err == nil {
-			if unmarshalErr := msgpack.Unmarshal(data, &v.value); unmarshalErr != nil {
+			if unmarshalErr := m.serializer.Unmarshal(data, &v.value); unmarshalErr != nil {
 				return nil, unmarshalErr
 			}
 			v.lastSynced = data
@@ -138,7 +137,7 @@ func (v *Var[T]) Sync() error {
 
 // syncNow performs the actual synchronization to storage. It expects the mutex to be locked.
 func (v *Var[T]) syncNow() error {
-	data, err := msgpack.Marshal(v.value)
+	data, err := v.serializer.Marshal(v.value)
 	if err != nil {
 		return err
 	}

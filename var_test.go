@@ -21,7 +21,7 @@ func TestNewVar_Singleton(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mgr := persistvar.NewVarManager(st)
+	mgr := persistvar.NewVarManager(st, &persistvar.JSONSerializer{})
 	defer mgr.Close()
 
 	// 2. Crear primera instancia
@@ -65,7 +65,7 @@ func TestVar_Update(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mgr := persistvar.NewVarManager(st)
+	mgr := persistvar.NewVarManager(st, &persistvar.JSONSerializer{})
 	defer mgr.Close()
 
 	v, err := persistvar.NewVar(mgr, "sequence", 0)
@@ -129,7 +129,7 @@ func TestNewVar_KeyValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mgr := persistvar.NewVarManager(st)
+	mgr := persistvar.NewVarManager(st, &persistvar.JSONSerializer{})
 	defer mgr.Close()
 
 	if _, err := persistvar.NewVar(mgr, "valid_key-1.2", 1); err != nil {

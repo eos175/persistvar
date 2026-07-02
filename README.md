@@ -46,7 +46,7 @@ func main() {
     // BoltStorage
     // boltStorage, _ := storage.NewBoltStorage("vars.db")
 
-    mgr := persistvar.NewVarManager(fs)
+    mgr := persistvar.NewVarManager(fs, nil) // Uses default JSONSerializer
     defer mgr.Close() // Saves pending changes and closes the manager on exit
 
     // Start autosync every 33 seconds
@@ -83,6 +83,11 @@ func main() {
 - **FileStorage** → ultra-lightweight for a few variables.
 - **BoltStorage** → fast, concurrent, and reliable for many variables.
 - **Minimalist and without unnecessary dependencies** (only bbolt).
+
+## 🛠️ Serialization
+- **Default**: `JSONSerializer` is used by default if no serializer is provided.
+- **Custom**: Implement the `Serializer` interface to use other formats (e.g., Protobuf, MsgPack).
+- **Injection**: Pass your custom serializer to `NewVarManager(storage, mySerializer)`.
 
 ---
 
@@ -134,6 +139,7 @@ Save(key string, newValue []byte, oldValue []byte) error
 classDiagram
     class VarManager {
         -Storage storage
+        -Serializer serializer
         -Var[T][] vars
         +AutoSync(ctx context.Context, interval time.Duration)
         +Sync() error
