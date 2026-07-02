@@ -2,6 +2,7 @@ package persistvar
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
@@ -49,17 +50,20 @@ func (m *VarManager) loadOrStore(key string, factory func() (syncable, error)) (
 }
 
 // Sync forces all managed variables to write their pending changes to storage immediately.
+// It returns an aggregate of all errors encountered during synchronization.
 func (m *VarManager) Sync() error {
 	m.mu.Lock()
 	vars := append([]syncable(nil), m.vars...)
 	m.mu.Unlock()
 
+	var errs []error
 	for _, v := range vars {
 		if err := v.Sync(); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
-	return nil
+
+	return errors.Join(errs...)
 }
 
 // AutoSync starts a goroutine that periodically saves all lazy variables to storage.
