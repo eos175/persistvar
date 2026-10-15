@@ -22,10 +22,10 @@ type Var[T any] struct {
 
 // NewVar creates or retrieves a managed persistent variable.
 // If a Var with the given key already exists, the existing instance is returned.
-// Otherwise, a new Var is initialized with defaultValue.
+// Otherwise, a new Var is initialized with the value returned by defaultFn.
 //
 // Important: For the same key, NewVar always returns the identical *Var[T] instance.
-func NewVar[T any](m *VarManager, key string, defaultValue T) (*Var[T], error) {
+func NewVar[T any](m *VarManager, key string, defaultFn func() T) (*Var[T], error) {
 	if !validKeyPattern.MatchString(key) {
 		return nil, fmt.Errorf("invalid key %q: allowed characters are [a-zA-Z0-9._-]", key)
 	}
@@ -40,8 +40,12 @@ func NewVar[T any](m *VarManager, key string, defaultValue T) (*Var[T], error) {
 			}
 			v.lastSynced = data
 		} else if errors.Is(err, ErrNotFound) {
-			// Not found in disk, initialize with default and mark for saving later.
-			v.SetLazy(defaultValue)
+			// Not found on disk, initialize using defaultFn and mark for saving later.
+			var val T
+			if defaultFn != nil {
+				val = defaultFn()
+			}
+			v.SetLazy(val)
 		} else {
 			return nil, err
 		}

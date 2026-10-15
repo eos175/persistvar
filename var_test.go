@@ -25,13 +25,13 @@ func TestNewVar_Singleton(t *testing.T) {
 	defer mgr.Close()
 
 	// 2. Crear primera instancia
-	v1, err := persistvar.NewVar(mgr, "counter", 100)
+	v1, err := persistvar.NewVar(mgr, "counter", func() int { return 100 })
 	if err != nil {
 		t.Fatalf("Error creating v1: %v", err)
 	}
 
 	// 3. Crear segunda instancia con la misma clave
-	v2, err := persistvar.NewVar(mgr, "counter", 200) // El valor por defecto 200 debería ser ignorado
+	v2, err := persistvar.NewVar(mgr, "counter", func() int { return 200 }) // El valor por defecto 200 debería ser ignorado
 	if err != nil {
 		t.Fatalf("Error creating v2: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestNewVar_Singleton(t *testing.T) {
 	}
 
 	// 6. Verificación 3: Tipo incorrecto
-	_, err = persistvar.NewVar(mgr, "counter", "string_value")
+	_, err = persistvar.NewVar(mgr, "counter", func() string { return "string_value" })
 	if err == nil {
 		t.Error("FAILED: Expected error when creating existing var with different type, got nil")
 	}
@@ -68,7 +68,7 @@ func TestVar_Update(t *testing.T) {
 	mgr := persistvar.NewVarManager(st, &persistvar.JSONSerializer{})
 	defer mgr.Close()
 
-	v, err := persistvar.NewVar(mgr, "sequence", 0)
+	v, err := persistvar.NewVar(mgr, "sequence", func() int { return 0 })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestVar_Update(t *testing.T) {
 	}
 
 	// Verificar en una nueva instancia que se persistió
-	v2, err := persistvar.NewVar(mgr, "sequence", 0)
+	v2, err := persistvar.NewVar(mgr, "sequence", func() int { return 0 })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,11 +132,11 @@ func TestNewVar_KeyValidation(t *testing.T) {
 	mgr := persistvar.NewVarManager(st, &persistvar.JSONSerializer{})
 	defer mgr.Close()
 
-	if _, err := persistvar.NewVar(mgr, "valid_key-1.2", 1); err != nil {
+	if _, err := persistvar.NewVar(mgr, "valid_key-1.2", func() int { return 1 }); err != nil {
 		t.Fatalf("expected valid key to pass, got error: %v", err)
 	}
 
-	if _, err := persistvar.NewVar(mgr, "invalid/key?name", 1); err == nil {
+	if _, err := persistvar.NewVar(mgr, "invalid/key?name", func() int { return 1 }); err == nil {
 		t.Fatal("expected invalid key to fail, got nil error")
 	}
 }

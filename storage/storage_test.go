@@ -91,7 +91,7 @@ func TestStressConcurrency(t *testing.T) {
 
 	for i := 0; i < numVars; i++ {
 		key := fmt.Sprintf("var_%d", i)
-		v, _ := persistvar.NewVar(mgr, key, 0)
+		v, _ := persistvar.NewVar(mgr, key, func() int { return 0 })
 
 		for j := 0; j < numGoroutines; j++ {
 			wg.Add(1)
@@ -121,7 +121,7 @@ func TestStressConcurrency(t *testing.T) {
 
 	for i := 0; i < numVars; i++ {
 		key := fmt.Sprintf("var_%d", i)
-		v, err := persistvar.NewVar(mgr2, key, 0)
+		v, err := persistvar.NewVar(mgr2, key, func() int { return 0 })
 		if err != nil {
 			t.Fatalf("Failed to reload var %s: %v", key, err)
 		}
